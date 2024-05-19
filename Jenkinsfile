@@ -3,8 +3,6 @@ pipeline {
 
     environment {
         DOCKER_CREDENTIALS_ID = 'dockerhub-credentials' // ID of Docker Hub credentials stored in Jenkins
-        SWARM_MANAGER_HOST = credentials('swarm-manager-host') // Host of Docker Swarm manager stored in Jenkins
-        SWARM_MANAGER_PORT = credentials('swarm-manager-port') // Port of Docker Swarm manager stored in Jenkins
     }
 
     parameters {
