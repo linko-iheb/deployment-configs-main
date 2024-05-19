@@ -15,47 +15,14 @@ pipeline {
     stages {
         stage('Clone User Repository') {
             steps {
+                script {
+                    echo "Cloning the user repository from ${params.USER_REPO}"
+                }
                 git url: "${params.USER_REPO}"
-            }
-        }
-
-        stage('Create Dockerfile if Missing') {
-            steps {
                 script {
-                    if (!fileExists('Dockerfile')) {
-                        writeFile file: 'Dockerfile', text: """
-                        FROM node:14
-                        WORKDIR /usr/src/app
-                        COPY package*.json ./
-                        RUN npm install
-                        COPY . .
-                        EXPOSE 8080
-                        CMD [ "node", "index.js" ]
-                        """
-                    }
-                }
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    docker.withRegistry('https://index.docker.io/v1/', DOCKER_CREDENTIALS_ID) {
-                        def image = docker.build("${params.DOCKER_IMAGE}")
-                        image.push()
-                    }
-                }
-            }
-        }
-
-        stage('Deploy to Docker Swarm') {
-            steps {
-                script {
-                    sh """
-                    export DOCKER_HOST=tcp://${SWARM_MANAGER_HOST}:${SWARM_MANAGER_PORT}
-                    docker service update --image ${params.DOCKER_IMAGE} user-app || \
-                    docker service create --name user-app --publish 8080:8080 ${params.DOCKER_IMAGE}
-                    """
+                    echo "Repository successfully cloned"
+                    echo "Listing the contents of the workspace:"
+                    sh 'ls -la'
                 }
             }
         }
