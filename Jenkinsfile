@@ -3,11 +3,12 @@ pipeline {
 
     environment {
         DOCKER_CREDENTIALS_ID = 'dockerhub-credentials' // ID of Docker Hub credentials stored in Jenkins
+        DOCKER_HUB_PREFIX = 'houbalinko/' // Default Docker Hub repository prefix
     }
 
     parameters {
-        string(name: 'USER_REPO', defaultValue: '', description: 'URL of the user\'s GitHub repository')
-        string(name: 'DOCKER_IMAGE', defaultValue: 'your-dockerhub-username/user-app:latest', description: 'Docker image name')
+        string(name: 'USER_REPO', defaultValue: 'https://github.com/example-user/example-repo.git', description: 'URL of the user\'s GitHub repository')
+        string(name: 'IMAGE_NAME', defaultValue: 'example-app', description: 'Name of the Docker image (without repository prefix)')
     }
 
     stages {
@@ -38,9 +39,6 @@ pipeline {
                         EXPOSE 8080
                         CMD [ "node", "index.js" ]
                         """
-                        echo "Dockerfile created"
-                    } else {
-                        echo "Dockerfile already exists"
                     }
                 }
             }
@@ -49,8 +47,9 @@ pipeline {
         stage('Docker Build') {
             steps {
                 script {
+                    def imageName = "${env.DOCKER_HUB_PREFIX}${params.IMAGE_NAME}"
                     // Build the Docker image
-                    docker.build("${params.DOCKER_IMAGE}")
+                    docker.build(imageName)
                 }
                 echo "Docker build completed"
             }
