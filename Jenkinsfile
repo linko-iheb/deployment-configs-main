@@ -46,6 +46,14 @@ pipeline {
             }
         }
 
-       
+        stage('Docker Build') {
+            steps {
+                script {
+                    // Build the Docker image
+                    docker.build("${params.DOCKER_IMAGE}")
+                }
+                echo "Docker build completed"
+            }
+        }
     }
 }
