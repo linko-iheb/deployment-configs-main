@@ -53,7 +53,7 @@ pipeline {
                 script {
                     def imageName = "${env.DOCKER_HUB_PREFIX}${params.IMAGE_NAME}"
                     // Build the Docker image
-                    docker.build(imageName)
+                    sh "docker build -t ${imageName} ."
                 }
                 echo "Docker build completed"
             }
