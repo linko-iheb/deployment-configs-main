@@ -55,7 +55,7 @@ pipeline {
                     // Build the Docker image
                     sh "docker build -t ${imageName} ."
                 }
-                echo "Docker build completed"
+                echo "Docker build completed seccess"
             }
         }
     }
