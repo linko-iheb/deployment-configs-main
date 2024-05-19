@@ -24,5 +24,28 @@ pipeline {
                 }
             }
         }
+
+        stage('Create Dockerfile if Missing') {
+            steps {
+                script {
+                    if (!fileExists('Dockerfile')) {
+                        writeFile file: 'Dockerfile', text: """
+                        FROM node:14
+                        WORKDIR /usr/src/app
+                        COPY package*.json ./
+                        RUN npm install
+                        COPY . .
+                        EXPOSE 8080
+                        CMD [ "node", "index.js" ]
+                        """
+                        echo "Dockerfile created"
+                    } else {
+                        echo "Dockerfile already exists"
+                    }
+                }
+            }
+        }
+
+       
     }
 }
