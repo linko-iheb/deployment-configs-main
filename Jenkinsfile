@@ -86,6 +86,21 @@ pipeline {
             }
         }
 
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    def imageName = "${env.DOCKER_HUB_PREFIX}${params.IMAGE_NAME}"
+                    // Login to Docker Hub using Jenkins credentials
+                    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: "${env.DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD']]) {
+                        sh "docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}"
+                    }
+                    // Push the Docker image to Docker Hub
+                    sh "docker push ${imageName}"
+                }
+                echo "Docker image pushed to Docker Hub successfully"
+            }
+        }
+
         stage('Create Docker Compose Stack') {
             steps {
                 script {
@@ -138,27 +153,14 @@ pipeline {
         stage('Deploy Docker Compose Stack') {
             steps {
                 script {
-                    // Deploy Docker Compose stack
+                    // Deploy the Docker Compose stack
                     sh "docker stack deploy -c ${env.DOCKER_COMPOSE_FILE} parse-stack"
                 }
-            }
-        }
-
-        stage('Push Docker Image') {
-            steps {
-                script {
-                    def imageName = "${env.DOCKER_HUB_PREFIX}${params.IMAGE_NAME}"
-                    // Login to Docker Hub using Jenkins credentials
-                    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: "${env.DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD']]) {
-                        sh "docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}"
-                    }
-                    // Push the Docker image to Docker Hub
-                    sh "docker push ${imageName}"
-                }
-                echo "Docker image pushed to Docker Hub successfully"
+                echo "Docker Compose stack deployed successfully"
             }
         }
     }
+}
 
     post {
         always {
@@ -166,4 +168,4 @@ pipeline {
             deleteFile "${env.DOCKER_COMPOSE_FILE}"
         }
     }
-}
+
