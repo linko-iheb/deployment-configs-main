@@ -145,8 +145,7 @@ pipeline {
             }
         }
 
-
-         stage('Push Docker Image') {
+        stage('Push Docker Image') {
             steps {
                 script {
                     def imageName = "${env.DOCKER_HUB_PREFIX}${params.IMAGE_NAME}"
@@ -160,6 +159,15 @@ pipeline {
                 echo "Docker image pushed to Docker Hub successfully"
             }
         }
-    }
 
- 
+        stage('Cleanup') {
+            steps {
+                script {
+                    // Delete Dockerfile and Docker Compose file
+                    sh "rm Dockerfile ${env.DOCKER_COMPOSE_FILE}"
+                }
+                echo "Dockerfile and Docker Compose file deleted successfully"
+            }
+        }
+    }
+}
