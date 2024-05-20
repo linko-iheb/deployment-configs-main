@@ -54,18 +54,7 @@ pipeline {
                         ENV MASTER_KEY=${params.MASTER_KEY}
                         ENV DATABASE_URI=mongodb://mongo:27017
 
-                        # Optional (default : 'parse/cloud/main.js')
-                        # ENV CLOUD_CODE_MAIN cloudCodePath
-
-                        # Optional (default : '/parse')
-                        # ENV PARSE_MOUNT mountPath
-
                         EXPOSE 1337
-
-                        # Uncomment if you want to access cloud code outside of your container
-                        # A main.js file must be present, if not Parse will not start
-
-                        # VOLUME /parse/cloud               
 
                         CMD [ "npm", "start" ]
                         """
@@ -83,21 +72,6 @@ pipeline {
                     sh "docker build -t ${imageName} ."
                 }
                 echo "Docker build completed successfully"
-            }
-        }
-
-        stage('Push Docker Image') {
-            steps {
-                script {
-                    def imageName = "${env.DOCKER_HUB_PREFIX}${params.IMAGE_NAME}"
-                    // Login to Docker Hub using Jenkins credentials
-                    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: "${env.DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD']]) {
-                        sh "docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}"
-                    }
-                    // Push the Docker image to Docker Hub
-                    sh "docker push ${imageName}"
-                }
-                echo "Docker image pushed to Docker Hub successfully"
             }
         }
 
@@ -159,8 +133,22 @@ pipeline {
                 echo "Docker Compose stack deployed successfully"
             }
         }
+
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    def imageName = "${env.DOCKER_HUB_PREFIX}${params.IMAGE_NAME}"
+                    // Login to Docker Hub using Jenkins credentials
+                    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: "${env.DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD']]) {
+                        sh "docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}"
+                    }
+                    // Push the Docker image to Docker Hub
+                    sh "docker push ${imageName}"
+                }
+                echo "Docker image pushed to Docker Hub successfully"
+            }
+        }
     }
-}
 
     post {
         always {
@@ -168,4 +156,4 @@ pipeline {
             deleteFile "${env.DOCKER_COMPOSE_FILE}"
         }
     }
-
+}
