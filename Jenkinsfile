@@ -4,10 +4,11 @@ pipeline {
     environment {
         DOCKER_CREDENTIALS_ID = 'dockerhub-credentials' // ID of Docker Hub credentials stored in Jenkins
         DOCKER_HUB_PREFIX = 'houbalinko/' // Default Docker Hub repository prefix
+        DOCKER_COMPOSE_FILE = 'docker-compose.yml' // File name for Docker Compose stack
     }
 
     parameters {
-        string(name: 'USER_REPO', defaultValue: 'https://github.com/example-user/example-repo.git', description: 'URL of the user\'s GitHub repository')
+        string(name: 'USER_REPO', defaultValue: 'https://github.com/parse-community/parse-server-example', description: 'URL of the user\'s GitHub repository')
         string(name: 'IMAGE_NAME', defaultValue: 'example-app', description: 'Name of the Docker image (without repository prefix)')
         string(name: 'APP_ID', defaultValue: 'yourAppId', description: 'Application ID for Parse Server')
         string(name: 'MASTER_KEY', defaultValue: 'yourMasterKey', description: 'Master Key for Parse Server')
@@ -24,7 +25,6 @@ pipeline {
                     echo "Repository successfully cloned"
                     echo "Listing the contents of the workspace:"
                     sh 'ls -la'
-                    sh'docker image ls '
                 }
             }
         }
@@ -54,18 +54,7 @@ pipeline {
                         ENV MASTER_KEY=${params.MASTER_KEY}
                         ENV DATABASE_URI=mongodb://mongo:27017
 
-                        # Optional (default : 'parse/cloud/main.js')
-                        # ENV CLOUD_CODE_MAIN cloudCodePath
-
-                        # Optional (default : '/parse')
-                        # ENV PARSE_MOUNT mountPath
-
                         EXPOSE 1337
-
-                        # Uncomment if you want to access cloud code outside of your container
-                        # A main.js file must be present, if not Parse will not start
-
-                        # VOLUME /parse/cloud               
 
                         CMD [ "npm", "start" ]
                         """
@@ -98,6 +87,45 @@ pipeline {
                     sh "docker push ${imageName}"
                 }
                 echo "Docker image pushed to Docker Hub successfully"
+            }
+        }
+
+        stage('Create Docker Compose Stack') {
+            steps {
+                script {
+                    // Generate Docker Compose stack file content with volumes
+                    def dockerComposeStackContent = """
+                        version: '3.8'
+                        services:
+                          parse:
+                            image: ${params.IMAGE_NAME}
+                            environment:
+                              APP_ID: ${params.APP_ID}
+                              MASTER_KEY: ${params.MASTER_KEY}
+                              DATABASE_URI: mongodb://mongo:27017
+                            ports:
+                              - "1337:1337"
+                            volumes:
+                              - parse_data:/parse
+                          mongo:
+                            image: mongo:latest
+                            volumes:
+                              - mongo_data:/data/db
+                    """
+                    // Write Docker Compose stack file
+                    writeFile file: "${env.DOCKER_COMPOSE_FILE}", text: dockerComposeStackContent
+                }
+                echo "Docker Compose stack file created successfully"
+            }
+        }
+
+        stage('Deploy Docker Compose Stack') {
+            steps {
+                script {
+                    // Deploy Docker Compose stack
+                    sh "docker stack deploy -c ${env.DOCKER_COMPOSE_FILE} parse-stack"
+                }
+                echo "Docker Compose stack deployed successfully"
             }
         }
     }
