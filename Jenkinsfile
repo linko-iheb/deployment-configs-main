@@ -90,14 +90,23 @@ pipeline {
             steps {
                 script {
                     // Check if the parse_data volume already exists
-                    def volumeCheck = sh(script: 'docker volume ls -q -f name=parse_data', returnStdout: true).trim()
-                    
-                    if (volumeCheck.isEmpty()) {
+                    def parseVolumeCheck = sh(script: 'docker volume ls -q -f name=parse_data', returnStdout: true).trim()
+                    if (parseVolumeCheck.isEmpty()) {
                         // If the volume doesn't exist, create it
                         sh "docker volume create parse_data"
                         echo "parse_data volume created"
                     } else {
                         echo "parse_data volume already exists"
+                    }
+
+                    // Check if the mongo_data volume already exists
+                    def mongoVolumeCheck = sh(script: 'docker volume ls -q -f name=mongo_data', returnStdout: true).trim()
+                    if (mongoVolumeCheck.isEmpty()) {
+                        // If the volume doesn't exist, create it
+                        sh "docker volume create mongo_data"
+                        echo "mongo_data volume created"
+                    } else {
+                        echo "mongo_data volume already exists"
                     }
 
                     // Generate Docker Compose stack file content with volumes
