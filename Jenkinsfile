@@ -37,7 +37,7 @@ pipeline {
                         def dockerfileContent = readFile('Dockerfile')
                         dockerfileContent = dockerfileContent.replaceAll(/ENV APP_ID .*/, "ENV APP_ID ${params.APP_ID}")
                         dockerfileContent = dockerfileContent.replaceAll(/ENV MASTER_KEY .*/, "ENV MASTER_KEY ${params.MASTER_KEY}")
-                        dockerfileContent = dockerfileContent.replaceAll(/ENV DATABASE_URI .*/, "ENV DATABASE_URI mongodb://mongo:27017")
+                        dockerfileContent = dockerfileContent.replaceAll(/ENV DATABASE_URI .*/, "ENV DATABASE_URI mongodb://parse-stack_mongo:27017")
                         writeFile file: 'Dockerfile', text: dockerfileContent
                         echo "Dockerfile updated"
                     } else {
@@ -52,7 +52,7 @@ pipeline {
 
                         ENV APP_ID=${params.APP_ID}
                         ENV MASTER_KEY=${params.MASTER_KEY}
-                        ENV DATABASE_URI=mongodb://mongo:27017
+                        ENV DATABASE_URI=mongodb://parse-stack_mongo:27017
 
                         EXPOSE 1337
 
