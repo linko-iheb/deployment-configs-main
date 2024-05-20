@@ -52,7 +52,7 @@ pipeline {
 
                         ENV APP_ID=${params.APP_ID}
                         ENV MASTER_KEY=${params.MASTER_KEY}
-                        ENV DATABASE_URI=mongodb://mongo:27017
+                        ENV DATABASE_URI= mongo:27017
 
                         EXPOSE 1337
 
