@@ -103,7 +103,7 @@ pipeline {
                         version: '3.8'
                         services:
                           parse:
-                            image: ${params.IMAGE_NAME}
+                            image: ${imageName}
                             environment:
                               APP_ID: ${params.APP_ID}
                               MASTER_KEY: ${params.MASTER_KEY}
