@@ -10,8 +10,8 @@ pipeline {
     parameters {
         string(name: 'USER_REPO', defaultValue: 'https://github.com/parse-community/parse-server-example', description: 'URL of the user\'s GitHub repository')
         string(name: 'IMAGE_NAME', defaultValue: 'example-app', description: 'Name of the Docker image (without repository prefix)')
-        string(name: 'APP_ID', defaultValue: 'yourAppId', description: 'Application ID for Parse Server')
-        string(name: 'MASTER_KEY', defaultValue: 'yourMasterKey', description: 'Master Key for Parse Server')
+        string(name: 'APP_ID', defaultValue: 'myAppId', description: 'Application ID for Parse Server')
+        string(name: 'MASTER_KEY', defaultValue: 'myMasterKey', description: 'Master Key for Parse Server')
     }
 
     stages {
