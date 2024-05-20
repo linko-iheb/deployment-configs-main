@@ -24,6 +24,7 @@ pipeline {
                     echo "Repository successfully cloned"
                     echo "Listing the contents of the workspace:"
                     sh 'ls -la'
+                    sh'docker image ls '
                 }
             }
         }
