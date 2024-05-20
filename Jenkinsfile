@@ -40,6 +40,7 @@ pipeline {
                         dockerfileContent = dockerfileContent.replaceAll(/ENV DATABASE_URI .*/, "ENV DATABASE_URI mongodb://mongodb:27017/dev")
                         writeFile file: 'Dockerfile', text: dockerfileContent
                         echo "Dockerfile updated"
+                        sh 'cat Dockerfile'
                     } else {
                         writeFile file: 'Dockerfile', text: """
                         FROM node:latest
