@@ -54,7 +54,18 @@ pipeline {
                         ENV MASTER_KEY=${params.MASTER_KEY}
                         ENV DATABASE_URI=mongodb://mongo:27017
 
+                        # Optional (default : 'parse/cloud/main.js')
+                        # ENV CLOUD_CODE_MAIN cloudCodePath
+
+                        # Optional (default : '/parse')
+                        # ENV PARSE_MOUNT mountPath
+
                         EXPOSE 1337
+
+                        # Uncomment if you want to access cloud code outside of your container
+                        # A main.js file must be present, if not Parse will not start
+
+                        # VOLUME /parse/cloud               
 
                         CMD [ "npm", "start" ]
                         """
@@ -93,6 +104,9 @@ pipeline {
         stage('Create Docker Compose Stack') {
             steps {
                 script {
+                    // Create volume for Parse service
+                    sh "docker volume create parse_data"
+                    
                     // Generate Docker Compose stack file content with volumes
                     def dockerComposeStackContent = """
                         version: '3.8'
