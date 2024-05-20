@@ -116,6 +116,9 @@ pipeline {
                             image: mongo:latest
                             volumes:
                               - mongo_data:/data/db
+                        volumes:
+                            mongo_data:
+                            parse_data:
                     """
                     // Write Docker Compose stack file
                     writeFile file: "${env.DOCKER_COMPOSE_FILE}", text: dockerComposeStackContent
