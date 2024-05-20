@@ -107,7 +107,7 @@ pipeline {
                             environment:
                               APP_ID: ${params.APP_ID}
                               MASTER_KEY: ${params.MASTER_KEY}
-                              DATABASE_URI: mongodb://mongo:27017
+                              DATABASE_URI: mongodb://parse-stack_mongo:27017
                             ports:
                               - "1337:1337"
                             volumes:
@@ -133,7 +133,7 @@ pipeline {
             steps {
                 script {
                     // Add a delay to ensure volume creation is completed
-                    sleep(time: 60, unit: 'SECONDS')
+                    sleep(time: 10, unit: 'SECONDS')
 
                     // Deploy the Docker Compose stack
                     sh "docker stack deploy -c ${env.DOCKER_COMPOSE_FILE} parse-stack"
@@ -146,9 +146,10 @@ pipeline {
     }
 
     post {
-        always {
-            // Clean up the Docker Compose stack file
-            deleteFile "${env.DOCKER_COMPOSE_FILE}"
+    always {
+        // Clean up the Docker Compose stack file
+        delete file: "${env.DOCKER_COMPOSE_FILE}"
         }
     }
+
 }
