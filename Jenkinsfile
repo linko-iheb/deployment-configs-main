@@ -97,7 +97,7 @@ pipeline {
                     } else {
                         echo "mongo_data volume already exists"
                     }
-
+                    def imageName = "${env.DOCKER_HUB_PREFIX}${params.IMAGE_NAME}"
                     // Generate Docker Compose stack file content with volumes
                     def dockerComposeStackContent = """
                         version: '3.8'
