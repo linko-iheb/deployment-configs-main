@@ -86,27 +86,20 @@ pipeline {
             }
         }
 
-        stage('Push Docker Image') {
-            steps {
-                script {
-                    def imageName = "${env.DOCKER_HUB_PREFIX}${params.IMAGE_NAME}"
-                    // Login to Docker Hub using Jenkins credentials
-                    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: "${env.DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD']]) {
-                        sh "docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}"
-                    }
-                    // Push the Docker image to Docker Hub
-                    sh "docker push ${imageName}"
-                }
-                echo "Docker image pushed to Docker Hub successfully"
-            }
-        }
-
         stage('Create Docker Compose Stack') {
             steps {
                 script {
-                    // Create volume for Parse service
-                    sh "docker volume create parse_data"
+                    // Check if the parse_data volume already exists
+                    def volumeCheck = sh(script: 'docker volume ls -q -f name=parse_data', returnStdout: true).trim()
                     
+                    if (volumeCheck.isEmpty()) {
+                        // If the volume doesn't exist, create it
+                        sh "docker volume create parse_data"
+                        echo "parse_data volume created"
+                    } else {
+                        echo "parse_data volume already exists"
+                    }
+
                     // Generate Docker Compose stack file content with volumes
                     def dockerComposeStackContent = """
                         version: '3.8'
@@ -139,8 +132,29 @@ pipeline {
                     // Deploy Docker Compose stack
                     sh "docker stack deploy -c ${env.DOCKER_COMPOSE_FILE} parse-stack"
                 }
-                echo "Docker Compose stack deployed successfully"
             }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    def imageName = "${env.DOCKER_HUB_PREFIX}${params.IMAGE_NAME}"
+                    // Login to Docker Hub using Jenkins credentials
+                    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: "${env.DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD']]) {
+                        sh "docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}"
+                    }
+                    // Push the Docker image to Docker Hub
+                    sh "docker push ${imageName}"
+                }
+                echo "Docker image pushed to Docker Hub successfully"
+            }
+        }
+    }
+
+    post {
+        always {
+            // Clean up the Docker Compose stack file
+            deleteFile "${env.DOCKER_COMPOSE_FILE}"
         }
     }
 }
