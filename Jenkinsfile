@@ -52,7 +52,7 @@ pipeline {
 
                         ENV APP_ID=${params.APP_ID}
                         ENV MASTER_KEY=${params.MASTER_KEY}
-                        ENV DATABASE_URI= mongodb://mongodb:27017/dev
+                        ENV DATABASE_URI=mongodb://mongodb:27017/dev
 
                         EXPOSE 1337
 
@@ -98,7 +98,7 @@ pipeline {
                         echo "mongo_data volume already exists"
                     }
                     def imageName = "${env.DOCKER_HUB_PREFIX}${params.IMAGE_NAME}"
-                    // Generate Docker Compose stack file content with volumes
+                    // Generate Docker Compose stack file content with volumes and depends_on
                     def dockerComposeStackContent = """
                         version: '3.8'
                         services:
@@ -112,7 +112,9 @@ pipeline {
                               - "1337:1337"
                             volumes:
                               - parse_data:/parse
-                          mongo:
+                            depends_on:
+                              - mongodb
+                          mongodb:
                             image: mongo:latest
                             ports:
                               - "27017:27017"
@@ -141,15 +143,12 @@ pipeline {
                 echo "Docker Compose stack deployed successfully"
             }
         }
-
-      
     }
 
     post {
-    always {
-        // Clean up the Docker Compose stack file
-        delete file: "${env.DOCKER_COMPOSE_FILE}"
+        always {
+            // Clean up the Docker Compose stack file
+            deleteFile "${env.DOCKER_COMPOSE_FILE}"
         }
     }
-
 }
