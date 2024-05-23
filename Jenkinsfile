@@ -125,26 +125,6 @@ pipeline {
         stage('Create Docker Compose Stack') {
             steps {
                 script {
-                    // Check if the parse_data volume already exists
-                    def parseVolumeCheck = sh(script: 'docker volume ls -q -f name=parse_data', returnStdout: true).trim()
-                    if (parseVolumeCheck.isEmpty()) {
-                        // If the volume doesn't exist, create it
-                        sh "docker volume create parse_data"
-                        echo "parse_data volume created"
-                    } else {
-                        echo "parse_data volume already exists"
-                    }
-
-                    // Check if the mongo_data volume already exists
-                    def mongoVolumeCheck = sh(script: 'docker volume ls -q -f name=mongo_data', returnStdout: true).trim()
-                    if (mongoVolumeCheck.isEmpty()) {
-                        // If the volume doesn't exist, create it
-                        sh "docker volume create mongo_data"
-                        echo "mongo_data volume created"
-                    } else {
-                        echo "mongo_data volume already exists"
-                    }
-
                     def imageName = "${env.DOCKER_HUB_PREFIX}${params.IMAGE_NAME}"
                     // Generate Docker Compose stack file content with volumes and depends_on
                     def dockerComposeStackContent = """
@@ -162,8 +142,6 @@ pipeline {
                           - PARSE_SERVER_API_VERSION=7
                         ports:
                           - "1337:1337"
-                        volumes:
-                          - parse_data:/parse
                         depends_on:
                           - mongodb
                         networks:
@@ -193,9 +171,6 @@ pipeline {
 
                     networks:
                       parse_server_network:
-                    volumes:
-                      parse_data:
-                      mongo_data:
                     """
                     // Write Docker Compose stack file
                     writeFile file: "${env.DOCKER_COMPOSE_FILE}", text: dockerComposeStackContent
