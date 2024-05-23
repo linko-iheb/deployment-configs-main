@@ -223,6 +223,7 @@ pipeline {
                 script {
                     // Delete Dockerfile and Docker Compose file
                     sh "rm Dockerfile ${env.DOCKER_COMPOSE_FILE}"
+                    sh "rm -rf ${env.GITHUB_REPO}"
                 }
                 echo "Dockerfile and Docker Compose file deleted successfully"
             }
