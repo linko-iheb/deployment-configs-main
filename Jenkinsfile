@@ -25,6 +25,7 @@ pipeline {
                 echo "Repository successfully cloned from main branch"
                 echo "Listing the contents of the workspace:"
                 sh 'ls -la'
+                sh 'cat ./cloud/main.js'
             }
         }
     }
