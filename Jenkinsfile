@@ -92,7 +92,6 @@ pipeline {
                         ENV MASTER_KEY=${params.MASTER_KEY}
                         ENV DATABASE_URI=mongodb://mongodb:27017
                         ENV PARSE_MOUNT=/parse
-                        ENV MASTER_KEY_IPS="::/0"
                         ENV CLOUD_CODE_MAIN=/parse/cloud/main.js
                         ENV PARSE_SERVER_API_VERSION=7
 
@@ -156,7 +155,6 @@ pipeline {
                           - MASTER_KEY=${params.MASTER_KEY}
                           - DATABASE_URI=mongodb://mongodb:27017
                           - PARSE_MOUNT=/parse
-                          - MASTER_KEY_IPS="::/0"
                           - CLOUD_CODE_MAIN=/parse/cloud/main.js
                           - PARSE_SERVER_API_VERSION=7
                         ports:
@@ -200,6 +198,7 @@ pipeline {
                     writeFile file: "${env.DOCKER_COMPOSE_FILE}", text: dockerComposeStackContent
                 }
                 echo "Docker Compose stack file created successfully"
+                sh "cat ${env.DOCKER_COMPOSE_FILE}"
             }
         }
 
