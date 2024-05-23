@@ -200,8 +200,10 @@ pipeline {
             steps {
                 script {
                     // Delete Dockerfile and Docker Compose file
+                    def imageName = "${env.DOCKER_HUB_PREFIX}${params.IMAGE_NAME}"
                     sh "rm Dockerfile ${env.DOCKER_COMPOSE_FILE}"
                     sh "rm -rf ${env.GITHUB_REPO}"
+                    sh "docker image rm ${imageName}"
                 }
                 echo "Dockerfile and Docker Compose file deleted successfully"
             }
