@@ -185,7 +185,7 @@ pipeline {
             steps {
                 script {
                     // Add a delay to ensure volume creation is completed
-                    sleep(time: 10, unit: 'SECONDS')
+                    sleep(time: 3, unit: 'SECONDS')
 
                     // Deploy the Docker Compose stack
                     sh "docker stack deploy -c ${env.DOCKER_COMPOSE_FILE} parse-stack"
