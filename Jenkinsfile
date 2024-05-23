@@ -15,19 +15,21 @@ pipeline {
     }
 
     stages {
-        stage('Clone User Repository') {
-            steps {
-                script {
-                    echo "Cloning the user repository from ${params.GITHUB_REPO}"
-                }
-                git url: "${params.GITHUB_REPO}"
-                script {
-                    echo "Repository successfully cloned"
-                    echo "Listing the contents of the workspace:"
-                    sh 'ls -la'
-                }
+    stage('Clone User Repository') {
+        steps {
+            script {
+                echo "Cloning the user repository from ${params.GITHUB_REPO}"
+            }
+            git branch: 'main', url: "${params.GITHUB_REPO}"
+            script {
+                echo "Repository successfully cloned from main branch"
+                echo "Listing the contents of the workspace:"
+                sh 'ls -la'
             }
         }
+    }
+}
+
 
         stage('Create or Update Dockerfile') {
             steps {
