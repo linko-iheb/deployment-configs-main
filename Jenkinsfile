@@ -32,82 +32,89 @@ pipeline {
         stage('Create or Update Dockerfile') {
             steps {
                 script {
-                    if (fileExists('Dockerfile')) {
-                        echo "Dockerfile already exists, updating with parameters"
-                        def dockerfileContent = readFile('Dockerfile')
+                    def dockerfileContent = """
+                FROM node:latest
 
-                        // Update existing environment variables
-                        dockerfileContent = dockerfileContent.replaceAll(/ENV APP_ID .*/, "ENV APP_ID ${params.APP_ID}")
-                        dockerfileContent = dockerfileContent.replaceAll(/ENV MASTER_KEY .*/, "ENV MASTER_KEY ${params.MASTER_KEY}")
-                        dockerfileContent = dockerfileContent.replaceAll(/ENV DATABASE_URI .*/, "ENV DATABASE_URI mongodb://mongodb:27017")
+                # Set the working directory to /parse
+                WORKDIR /parse
 
-                        // Ensure the new ENV variables are added after the existing ones
-                        def envBlock = ""
-                        if (!dockerfileContent.contains("ENV MASTER_KEY_IPS")) {
-                            envBlock += "ENV MASTER_KEY_IPS \"::/0\"\n"
-                        } else {
-                            dockerfileContent = dockerfileContent.replaceAll(/ENV MASTER_KEY_IPS .*/, "ENV MASTER_KEY_IPS \"::/0\"")
-                        }
+                # Copy package.json and package-lock.json files
+                COPY package*.json ./
 
-                        if (!dockerfileContent.contains("ENV CLOUD_CODE_MAIN")) {
-                            envBlock += "ENV CLOUD_CODE_MAIN /parse/cloud/main.js\n"
-                        } else {
-                            dockerfileContent = dockerfileContent.replaceAll(/# ENV CLOUD_CODE_MAIN .*/, "ENV CLOUD_CODE_MAIN /parse/cloud/main.js")
-                        }
+                # Install dependencies
+                RUN npm install
 
-                        if (!dockerfileContent.contains("ENV PARSE_SERVER_API_VERSION")) {
-                            envBlock += "ENV PARSE_SERVER_API_VERSION 7\n"
-                        } else {
-                            dockerfileContent = dockerfileContent.replaceAll(/# ENV PARSE_SERVER_API_VERSION .*/, "ENV PARSE_SERVER_API_VERSION 7")
-                        }
+                # Copy the rest of the application code
+                COPY . .
 
-                        // Insert the new ENV variables after the existing ones
-                        dockerfileContent = dockerfileContent.replaceFirst(/(ENV DATABASE_URI .*)/, "\$1\n${envBlock.trim()}")
+                # Set environment variables
+                ENV APP_ID=${params.APP_ID}
+                ENV MASTER_KEY=${params.MASTER_KEY}
+                ENV DATABASE_URI=mongodb://mongodb:27017
+                ENV PARSE_MOUNT=/parse
+                ENV MASTER_KEY_IPS="::/0"
+                ENV CLOUD_CODE_MAIN=/parse/cloud/main.js
+                ENV PARSE_SERVER_API_VERSION=7
 
-                        // Remove the '#' character from the commented lines
-                        dockerfileContent = dockerfileContent.replaceAll(/# ENV CLOUD_CODE_MAIN .*/, "ENV CLOUD_CODE_MAIN /parse/cloud/main.js")
-                        dockerfileContent = dockerfileContent.replaceAll(/# ENV PARSE_MOUNT .*/, "ENV PARSE_MOUNT /parse")
+                # Expose port 1337
+                EXPOSE 1337
 
-                        writeFile file: 'Dockerfile', text: dockerfileContent
-                        echo "Dockerfile updated"
-                        sh 'cat Dockerfile'
-                    } else {
-                        writeFile file: 'Dockerfile', text: """
-                        FROM node:latest
+                # Start the Parse Server
+                CMD [ "npm", "start" ]
+            """
 
-                        # Set the working directory to /parse
-                        WORKDIR /parse
+                if (fileExists('Dockerfile')) {
+                echo "Dockerfile already exists, updating with parameters"
 
-                        # Copy package.json and package-lock.json files
-                        COPY package*.json ./
+                // Update existing environment variables
+                dockerfileContent = dockerfileContent.replaceAll(/ENV APP_ID .*/, "ENV APP_ID ${params.APP_ID}")
+                dockerfileContent = dockerfileContent.replaceAll(/ENV MASTER_KEY .*/, "ENV MASTER_KEY ${params.MASTER_KEY}")
+                dockerfileContent = dockerfileContent.replaceAll(/ENV DATABASE_URI .*/, "ENV DATABASE_URI mongodb://mongodb:27017")
 
-                        # Install dependencies
-                        RUN npm install
-
-                        # Copy the rest of the application code
-                        COPY . .
-
-                        # Set environment variables
-                        ENV APP_ID=${params.APP_ID}
-                        ENV MASTER_KEY=${params.MASTER_KEY}
-                        ENV DATABASE_URI=mongodb://mongodb:27017
-                        ENV PARSE_MOUNT=/parse
-                        ENV MASTER_KEY_IPS="::/0"
-                        ENV CLOUD_CODE_MAIN=/parse/cloud/main.js
-                        ENV PARSE_SERVER_API_VERSION=7
-
-                        # Expose port 1337
-                        EXPOSE 1337
-
-                        # Start the Parse Server
-                        CMD [ "npm", "start" ]
-                        """
-                        echo "Dockerfile created"
-                        sh 'cat Dockerfile'
-                    }
+                // Ensure the new ENV variables are added after the existing ones
+                def envBlock = ""
+                if (!dockerfileContent.contains("ENV MASTER_KEY_IPS")) {
+                    envBlock += "ENV MASTER_KEY_IPS \"::/0\"\n"
+                } else {
+                    dockerfileContent = dockerfileContent.replaceAll(/ENV MASTER_KEY_IPS .*/, "ENV MASTER_KEY_IPS \"::/0\"")
                 }
+
+                if (!dockerfileContent.contains("ENV CLOUD_CODE_MAIN")) {
+                    envBlock += "ENV CLOUD_CODE_MAIN /parse/cloud/main.js\n"
+                } else {
+                    dockerfileContent = dockerfileContent.replaceAll(/# ENV CLOUD_CODE_MAIN .*/, "ENV CLOUD_CODE_MAIN /parse/cloud/main.js")
+                }
+
+                if (!dockerfileContent.contains("ENV PARSE_SERVER_API_VERSION")) {
+                    envBlock += "ENV PARSE_SERVER_API_VERSION 7\n"
+                } else {
+                    dockerfileContent = dockerfileContent.replaceAll(/# ENV PARSE_SERVER_API_VERSION .*/, "ENV PARSE_SERVER_API_VERSION 7")
+                }
+
+                // Insert the new ENV variables after the existing ones
+                dockerfileContent = dockerfileContent.replaceFirst(/(ENV DATABASE_URI .*)/, "\$1\n${envBlock.trim()}")
+
+                // Remove the '#' character from the commented lines
+                dockerfileContent = dockerfileContent.replaceAll(/# ENV CLOUD_CODE_MAIN .*/, "ENV CLOUD_CODE_MAIN /parse/cloud/main.js")
+                dockerfileContent = dockerfileContent.replaceAll(/# ENV PARSE_MOUNT .*/, "ENV PARSE_MOUNT /parse")
+
+                // Ensure that COPY and RUN commands for package.json and package-lock.json are included
+                dockerfileContent = dockerfileContent.replaceAll(/# Copy package.json and package-lock.json files.*?RUN npm install/s, """
+                    # Copy package.json and package-lock.json files
+                    COPY package*.json ./
+
+                    # Install dependencies
+                    RUN npm install
+                """)
             }
+
+            writeFile file: 'Dockerfile', text: dockerfileContent
+            echo "Dockerfile updated/created"
+            sh 'cat Dockerfile'
         }
+    }
+}
+
 
         stage('Docker Build') {
             steps {
