@@ -98,32 +98,59 @@ pipeline {
                     } else {
                         echo "mongo_data volume already exists"
                     }
+
                     def imageName = "${env.DOCKER_HUB_PREFIX}${params.IMAGE_NAME}"
                     // Generate Docker Compose stack file content with volumes and depends_on
                     def dockerComposeStackContent = """
-                        version: '3.8'
-                        services:
-                          parse:
-                            image: ${imageName}
-                            environment:
-                              APP_ID: ${params.APP_ID}
-                              MASTER_KEY: ${params.MASTER_KEY}
-                              DATABASE_URI: mongodb://mongodb:27017/dev
-                            ports:
-                              - "1337:1337"
-                            volumes:
-                              - parse_data:/parse
-                            depends_on:
-                              - mongodb
-                          mongodb:
-                            image: mongo:latest
-                            ports:
-                              - "27017:27017"
-                            volumes:
-                              - mongo_data:/data/db
+                    version: '3.8'
+
+                    services:
+                      parse:
+                        image: ${imageName}
+                        environment:
+                          - APP_ID=${params.APP_ID}
+                          - MASTER_KEY=${params.MASTER_KEY}
+                          - DATABASE_URI=mongodb://mongodb:27017/dev
+                          - PARSE_MOUNT=/parse
+                          - MASTER_KEY_IPS="::/0"
+                          - CLOUD_CODE_MAIN=/parse/cloud/main.js
+                          - PARSE_SERVER_API_VERSION=7
+                        ports:
+                          - "1337:1337"
                         volumes:
-                            mongo_data:
-                            parse_data:
+                          - parse_data:/parse
+                        depends_on:
+                          - mongodb
+                        networks:
+                          - parse_server_network
+
+                      parse-dashboard:
+                        image: parseplatform/parse-dashboard
+                        environment:
+                          - PARSE_DASHBOARD_SERVER_URL=http://localhost:1337/parse
+                          - PARSE_DASHBOARD_APP_ID=${params.APP_ID}
+                          - PARSE_DASHBOARD_MASTER_KEY=${params.MASTER_KEY}
+                          - PARSE_DASHBOARD_APP_NAME=myAppName
+                          - PARSE_DASHBOARD_USER_ID=username
+                          - PARSE_DASHBOARD_USER_PASSWORD=password
+                          - PARSE_DASHBOARD_ALLOW_INSECURE_HTTP=true
+                        ports:
+                          - "4040:4040"
+                        networks:
+                          - parse_server_network
+                        depends_on:
+                          - parse
+
+                      mongodb:
+                        image: mongo:latest
+                        networks:
+                          - parse_server_network
+
+                    networks:
+                      parse_server_network:
+                    volumes:
+                      parse_data:
+                      mongo_data:
                     """
                     // Write Docker Compose stack file
                     writeFile file: "${env.DOCKER_COMPOSE_FILE}", text: dockerComposeStackContent
