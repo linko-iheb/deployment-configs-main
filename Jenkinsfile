@@ -35,29 +35,35 @@ pipeline {
                     if (fileExists('Dockerfile')) {
                         echo "Dockerfile already exists, updating with parameters"
                         def dockerfileContent = readFile('Dockerfile')
+
+                        // Update existing environment variables
                         dockerfileContent = dockerfileContent.replaceAll(/ENV APP_ID .*/, "ENV APP_ID ${params.APP_ID}")
                         dockerfileContent = dockerfileContent.replaceAll(/ENV MASTER_KEY .*/, "ENV MASTER_KEY ${params.MASTER_KEY}")
                         dockerfileContent = dockerfileContent.replaceAll(/ENV DATABASE_URI .*/, "ENV DATABASE_URI mongodb://mongodb:27017")
 
-                        // Check and add the missing ENV variables if not present
+                        // Ensure the new ENV variables are added after the existing ones
+                        def envBlock = ""
                         if (!dockerfileContent.contains("ENV MASTER_KEY_IPS")) {
-                            dockerfileContent += "\nENV MASTER_KEY_IPS \"::/0\""
+                            envBlock += "ENV MASTER_KEY_IPS \"::/0\"\n"
                         } else {
                             dockerfileContent = dockerfileContent.replaceAll(/ENV MASTER_KEY_IPS .*/, "ENV MASTER_KEY_IPS \"::/0\"")
                         }
 
                         if (!dockerfileContent.contains("ENV CLOUD_CODE_MAIN")) {
-                            dockerfileContent += "\nENV CLOUD_CODE_MAIN /parse/cloud/main.js"
+                            envBlock += "ENV CLOUD_CODE_MAIN /parse/cloud/main.js\n"
                         } else {
                             dockerfileContent = dockerfileContent.replaceAll(/ENV CLOUD_CODE_MAIN .*/, "ENV CLOUD_CODE_MAIN /parse/cloud/main.js")
                         }
 
                         if (!dockerfileContent.contains("ENV PARSE_SERVER_API_VERSION")) {
-                            dockerfileContent += "\nENV PARSE_SERVER_API_VERSION 7"
+                            envBlock += "ENV PARSE_SERVER_API_VERSION 7\n"
                         } else {
                             dockerfileContent = dockerfileContent.replaceAll(/ENV PARSE_SERVER_API_VERSION .*/, "ENV PARSE_SERVER_API_VERSION 7")
                         }
 
+                        // Insert the new ENV variables after the existing ones
+                        dockerfileContent = dockerfileContent.replaceFirst(/(ENV DATABASE_URI .*)/, "\$1\n${envBlock.trim()}")
+                        
                         writeFile file: 'Dockerfile', text: dockerfileContent
                         echo "Dockerfile updated"
                         sh 'cat Dockerfile'
