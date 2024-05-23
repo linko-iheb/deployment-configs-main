@@ -32,89 +32,90 @@ pipeline {
         stage('Create or Update Dockerfile') {
             steps {
                 script {
-                    def dockerfileContent = """
-                FROM node:latest
+                    if (fileExists('Dockerfile')) {
+                        echo "Dockerfile already exists, updating with parameters"
+                        // Read the existing Dockerfile content
+                        def dockerfileContent = readFile('Dockerfile')
 
-                # Set the working directory to /parse
-                WORKDIR /parse
+                        // Update existing environment variables
+                        dockerfileContent = dockerfileContent.replaceAll(/ENV APP_ID .*/, "ENV APP_ID ${params.APP_ID}")
+                        dockerfileContent = dockerfileContent.replaceAll(/ENV MASTER_KEY .*/, "ENV MASTER_KEY ${params.MASTER_KEY}")
+                        dockerfileContent = dockerfileContent.replaceAll(/ENV DATABASE_URI .*/, "ENV DATABASE_URI mongodb://mongodb:27017")
 
-                # Copy package.json and package-lock.json files
-                COPY package*.json ./
+                        // Ensure the new ENV variables are added after the existing ones
+                        def envBlock = ""
+                        if (!dockerfileContent.contains("ENV MASTER_KEY_IPS")) {
+                            envBlock += "ENV MASTER_KEY_IPS \"::/0\"\n"
+                        } else {
+                            dockerfileContent = dockerfileContent.replaceAll(/ENV MASTER_KEY_IPS .*/, "ENV MASTER_KEY_IPS \"::/0\"")
+                        }
 
-                # Install dependencies
-                RUN npm install
+                        if (!dockerfileContent.contains("ENV CLOUD_CODE_MAIN")) {
+                            envBlock += "ENV CLOUD_CODE_MAIN /parse/cloud/main.js\n"
+                        } else {
+                            dockerfileContent = dockerfileContent.replaceAll(/# ENV CLOUD_CODE_MAIN .*/, "ENV CLOUD_CODE_MAIN /parse/cloud/main.js")
+                        }
 
-                # Copy the rest of the application code
-                COPY . .
+                        if (!dockerfileContent.contains("ENV PARSE_SERVER_API_VERSION")) {
+                            envBlock += "ENV PARSE_SERVER_API_VERSION 7\n"
+                        } else {
+                            dockerfileContent = dockerfileContent.replaceAll(/# ENV PARSE_SERVER_API_VERSION .*/, "ENV PARSE_SERVER_API_VERSION 7")
+                        }
 
-                # Set environment variables
-                ENV APP_ID=${params.APP_ID}
-                ENV MASTER_KEY=${params.MASTER_KEY}
-                ENV DATABASE_URI=mongodb://mongodb:27017
-                ENV PARSE_MOUNT=/parse
-                ENV MASTER_KEY_IPS="::/0"
-                ENV CLOUD_CODE_MAIN=/parse/cloud/main.js
-                ENV PARSE_SERVER_API_VERSION=7
+                        // Insert the new ENV variables after the existing ones
+                        dockerfileContent = dockerfileContent.replaceFirst(/(ENV DATABASE_URI .*)/, "\$1\n${envBlock.trim()}")
 
-                # Expose port 1337
-                EXPOSE 1337
+                        // Ensure that COPY and RUN commands for package.json and package-lock.json are included
+                        dockerfileContent = dockerfileContent.replaceAll(/# Copy package.json and package-lock.json files.*?RUN npm install/s, """
+                            # Copy package.json and package-lock.json files
+                            COPY package*.json ./
 
-                # Start the Parse Server
-                CMD [ "npm", "start" ]
-            """
+                            # Install dependencies
+                            RUN npm install
+                        """)
+                        // Write the updated Dockerfile content
+                        writeFile file: 'Dockerfile', text: dockerfileContent
+                        echo "Dockerfile updated"
+                        sh 'cat Dockerfile'
+                    } else {
+                        def dockerfileContent = """
+                            FROM node:latest
 
-                if (fileExists('Dockerfile')) {
-                echo "Dockerfile already exists, updating with parameters"
+                            # Set the working directory to /parse
+                            WORKDIR /parse
 
-                // Update existing environment variables
-                dockerfileContent = dockerfileContent.replaceAll(/ENV APP_ID .*/, "ENV APP_ID ${params.APP_ID}")
-                dockerfileContent = dockerfileContent.replaceAll(/ENV MASTER_KEY .*/, "ENV MASTER_KEY ${params.MASTER_KEY}")
-                dockerfileContent = dockerfileContent.replaceAll(/ENV DATABASE_URI .*/, "ENV DATABASE_URI mongodb://mongodb:27017")
+                            # Copy package.json and package-lock.json files
+                            COPY package*.json ./
 
-                // Ensure the new ENV variables are added after the existing ones
-                def envBlock = ""
-                if (!dockerfileContent.contains("ENV MASTER_KEY_IPS")) {
-                    envBlock += "ENV MASTER_KEY_IPS \"::/0\"\n"
-                } else {
-                    dockerfileContent = dockerfileContent.replaceAll(/ENV MASTER_KEY_IPS .*/, "ENV MASTER_KEY_IPS \"::/0\"")
+                            # Install dependencies
+                            RUN npm install
+
+                            # Copy the rest of the application code
+                            COPY . .
+
+                            # Set environment variables
+                            ENV APP_ID=${params.APP_ID}
+                            ENV MASTER_KEY=${params.MASTER_KEY}
+                            ENV DATABASE_URI=mongodb://mongodb:27017
+                            ENV PARSE_MOUNT=/parse
+                            ENV MASTER_KEY_IPS="::/0"
+                            ENV CLOUD_CODE_MAIN=/parse/cloud/main.js
+                            ENV PARSE_SERVER_API_VERSION=7
+
+                            # Expose port 1337
+                            EXPOSE 1337
+
+                            # Start the Parse Server
+                            CMD [ "npm", "start" ]
+                        """
+                        // Write the Dockerfile content
+                        writeFile file: 'Dockerfile', text: dockerfileContent
+                        echo "Dockerfile created"
+                        sh 'cat Dockerfile'
+                    }
                 }
-
-                if (!dockerfileContent.contains("ENV CLOUD_CODE_MAIN")) {
-                    envBlock += "ENV CLOUD_CODE_MAIN /parse/cloud/main.js\n"
-                } else {
-                    dockerfileContent = dockerfileContent.replaceAll(/# ENV CLOUD_CODE_MAIN .*/, "ENV CLOUD_CODE_MAIN /parse/cloud/main.js")
-                }
-
-                if (!dockerfileContent.contains("ENV PARSE_SERVER_API_VERSION")) {
-                    envBlock += "ENV PARSE_SERVER_API_VERSION 7\n"
-                } else {
-                    dockerfileContent = dockerfileContent.replaceAll(/# ENV PARSE_SERVER_API_VERSION .*/, "ENV PARSE_SERVER_API_VERSION 7")
-                }
-
-                // Insert the new ENV variables after the existing ones
-                dockerfileContent = dockerfileContent.replaceFirst(/(ENV DATABASE_URI .*)/, "\$1\n${envBlock.trim()}")
-
-                // Remove the '#' character from the commented lines
-                dockerfileContent = dockerfileContent.replaceAll(/# ENV CLOUD_CODE_MAIN .*/, "ENV CLOUD_CODE_MAIN /parse/cloud/main.js")
-                dockerfileContent = dockerfileContent.replaceAll(/# ENV PARSE_MOUNT .*/, "ENV PARSE_MOUNT /parse")
-
-                // Ensure that COPY and RUN commands for package.json and package-lock.json are included
-                dockerfileContent = dockerfileContent.replaceAll(/# Copy package.json and package-lock.json files.*?RUN npm install/s, """
-                    # Copy package.json and package-lock.json files
-                    COPY package*.json ./
-
-                    # Install dependencies
-                    RUN npm install
-                """)
             }
-
-            writeFile file: 'Dockerfile', text: dockerfileContent
-            echo "Dockerfile updated/created"
-            sh 'cat Dockerfile'
         }
-    }
-}
-
 
         stage('Docker Build') {
             steps {
