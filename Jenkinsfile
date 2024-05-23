@@ -37,7 +37,27 @@ pipeline {
                         def dockerfileContent = readFile('Dockerfile')
                         dockerfileContent = dockerfileContent.replaceAll(/ENV APP_ID .*/, "ENV APP_ID ${params.APP_ID}")
                         dockerfileContent = dockerfileContent.replaceAll(/ENV MASTER_KEY .*/, "ENV MASTER_KEY ${params.MASTER_KEY}")
-                        dockerfileContent = dockerfileContent.replaceAll(/ENV DATABASE_URI .*/, "ENV DATABASE_URI mongodb://mongodb:27017/dev")
+                        dockerfileContent = dockerfileContent.replaceAll(/ENV DATABASE_URI .*/, "ENV DATABASE_URI mongodb://mongodb:27017")
+
+                        // Check and add the missing ENV variables if not present
+                        if (!dockerfileContent.contains("ENV MASTER_KEY_IPS")) {
+                            dockerfileContent += "\nENV MASTER_KEY_IPS \"::/0\""
+                        } else {
+                            dockerfileContent = dockerfileContent.replaceAll(/ENV MASTER_KEY_IPS .*/, "ENV MASTER_KEY_IPS \"::/0\"")
+                        }
+
+                        if (!dockerfileContent.contains("ENV CLOUD_CODE_MAIN")) {
+                            dockerfileContent += "\nENV CLOUD_CODE_MAIN /parse/cloud/main.js"
+                        } else {
+                            dockerfileContent = dockerfileContent.replaceAll(/ENV CLOUD_CODE_MAIN .*/, "ENV CLOUD_CODE_MAIN /parse/cloud/main.js")
+                        }
+
+                        if (!dockerfileContent.contains("ENV PARSE_SERVER_API_VERSION")) {
+                            dockerfileContent += "\nENV PARSE_SERVER_API_VERSION 7"
+                        } else {
+                            dockerfileContent = dockerfileContent.replaceAll(/ENV PARSE_SERVER_API_VERSION .*/, "ENV PARSE_SERVER_API_VERSION 7")
+                        }
+
                         writeFile file: 'Dockerfile', text: dockerfileContent
                         echo "Dockerfile updated"
                         sh 'cat Dockerfile'
@@ -45,21 +65,35 @@ pipeline {
                         writeFile file: 'Dockerfile', text: """
                         FROM node:latest
 
-                        RUN mkdir parse
-
-                        ADD . /parse
+                        # Set the working directory to /parse
                         WORKDIR /parse
+
+                        # Copy package.json and package-lock.json files
+                        COPY package*.json ./
+
+                        # Install dependencies
                         RUN npm install
 
+                        # Copy the rest of the application code
+                        COPY . .
+
+                        # Set environment variables
                         ENV APP_ID=${params.APP_ID}
                         ENV MASTER_KEY=${params.MASTER_KEY}
-                        ENV DATABASE_URI=mongodb://mongodb:27017/dev
+                        ENV DATABASE_URI=mongodb://mongodb:27017
+                        ENV PARSE_MOUNT=/parse
+                        ENV MASTER_KEY_IPS="::/0"
+                        ENV CLOUD_CODE_MAIN=/parse/cloud/main.js
+                        ENV PARSE_SERVER_API_VERSION=7
 
+                        # Expose port 1337
                         EXPOSE 1337
 
+                        # Start the Parse Server
                         CMD [ "npm", "start" ]
                         """
                         echo "Dockerfile created"
+                        sh 'cat Dockerfile'
                     }
                 }
             }
@@ -172,7 +206,7 @@ pipeline {
             }
         }
 
-        
+    
 
         stage('Cleanup') {
             steps {
