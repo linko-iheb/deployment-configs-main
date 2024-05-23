@@ -154,7 +154,7 @@ pipeline {
                         environment:
                           - APP_ID=${params.APP_ID}
                           - MASTER_KEY=${params.MASTER_KEY}
-                          - DATABASE_URI=mongodb://mongodb:27017/dev
+                          - DATABASE_URI=mongodb://mongodb:27017
                           - PARSE_MOUNT=/parse
                           - MASTER_KEY_IPS="::/0"
                           - CLOUD_CODE_MAIN=/parse/cloud/main.js
