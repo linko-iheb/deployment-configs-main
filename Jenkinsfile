@@ -18,9 +18,9 @@ pipeline {
         stage('Clone User Repository') {
             steps {
                 script {
-                    echo "Cloning the user repository from ${params.USER_REPO}"
+                    echo "Cloning the user repository from ${params.GITHUB_REPO}"
                 }
-                git url: "${params.USER_REPO}"
+                git url: "${params.GITHUB_REPO}"
                 script {
                     echo "Repository successfully cloned"
                     echo "Listing the contents of the workspace:"
