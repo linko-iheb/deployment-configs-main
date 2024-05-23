@@ -34,7 +34,6 @@ pipeline {
                 script {
                     if (fileExists('Dockerfile')) {
                         echo "Dockerfile already exists, updating with parameters"
-                        // Read the existing Dockerfile content
                         def dockerfileContent = readFile('Dockerfile')
 
                         // Update existing environment variables
@@ -65,51 +64,44 @@ pipeline {
                         // Insert the new ENV variables after the existing ones
                         dockerfileContent = dockerfileContent.replaceFirst(/(ENV DATABASE_URI .*)/, "\$1\n${envBlock.trim()}")
 
-                        // Ensure that COPY and RUN commands for package.json and package-lock.json are included
-                        dockerfileContent = dockerfileContent.replaceAll(/# Copy package.json and package-lock.json files.*?RUN npm install/s, """
-                            # Copy package.json and package-lock.json files
-                            COPY package*.json ./
+                        // Remove the '#' character from the commented lines
+                        dockerfileContent = dockerfileContent.replaceAll(/# ENV CLOUD_CODE_MAIN .*/, "ENV CLOUD_CODE_MAIN /parse/cloud/main.js")
+                        dockerfileContent = dockerfileContent.replaceAll(/# ENV PARSE_MOUNT .*/, "ENV PARSE_MOUNT /parse")
 
-                            # Install dependencies
-                            RUN npm install
-                        """)
-                        // Write the updated Dockerfile content
                         writeFile file: 'Dockerfile', text: dockerfileContent
                         echo "Dockerfile updated"
                         sh 'cat Dockerfile'
                     } else {
-                        def dockerfileContent = """
-                            FROM node:latest
+                        writeFile file: 'Dockerfile', text: """
+                        FROM node:latest
 
-                            # Set the working directory to /parse
-                            WORKDIR /parse
+                        # Set the working directory to /parse
+                        WORKDIR /parse
 
-                            # Copy package.json and package-lock.json files
-                            COPY package*.json ./
+                        # Copy package.json and package-lock.json files
+                        COPY package*.json ./
 
-                            # Install dependencies
-                            RUN npm install
+                        # Install dependencies
+                        RUN npm install
 
-                            # Copy the rest of the application code
-                            COPY . .
+                        # Copy the rest of the application code
+                        COPY . .
 
-                            # Set environment variables
-                            ENV APP_ID=${params.APP_ID}
-                            ENV MASTER_KEY=${params.MASTER_KEY}
-                            ENV DATABASE_URI=mongodb://mongodb:27017
-                            ENV PARSE_MOUNT=/parse
-                            ENV MASTER_KEY_IPS="::/0"
-                            ENV CLOUD_CODE_MAIN=/parse/cloud/main.js
-                            ENV PARSE_SERVER_API_VERSION=7
+                        # Set environment variables
+                        ENV APP_ID=${params.APP_ID}
+                        ENV MASTER_KEY=${params.MASTER_KEY}
+                        ENV DATABASE_URI=mongodb://mongodb:27017
+                        ENV PARSE_MOUNT=/parse
+                        ENV MASTER_KEY_IPS="::/0"
+                        ENV CLOUD_CODE_MAIN=/parse/cloud/main.js
+                        ENV PARSE_SERVER_API_VERSION=7
 
-                            # Expose port 1337
-                            EXPOSE 1337
+                        # Expose port 1337
+                        EXPOSE 1337
 
-                            # Start the Parse Server
-                            CMD [ "npm", "start" ]
+                        # Start the Parse Server
+                        CMD [ "npm", "start" ]
                         """
-                        // Write the Dockerfile content
-                        writeFile file: 'Dockerfile', text: dockerfileContent
                         echo "Dockerfile created"
                         sh 'cat Dockerfile'
                     }
@@ -127,89 +119,7 @@ pipeline {
                 echo "Docker build completed successfully"
             }
         }
-
-        stage('Create Docker Compose Stack') {
-            steps {
-                script {
-                    // Check if the parse_data volume already exists
-                    def parseVolumeCheck = sh(script: 'docker volume ls -q -f name=parse_data', returnStdout: true).trim()
-                    if (parseVolumeCheck.isEmpty()) {
-                        // If the volume doesn't exist, create it
-                        sh "docker volume create parse_data"
-                        echo "parse_data volume created"
-                    } else {
-                        echo "parse_data volume already exists"
-                    }
-
-                    // Check if the mongo_data volume already exists
-                    def mongoVolumeCheck = sh(script: 'docker volume ls -q -f name=mongo_data', returnStdout: true).trim()
-                    if (mongoVolumeCheck.isEmpty()) {
-                        // If the volume doesn't exist, create it
-                        sh "docker volume create mongo_data"
-                        echo "mongo_data volume created"
-                    } else {
-                        echo "mongo_data volume already exists"
-                    }
-
-                    def imageName = "${env.DOCKER_HUB_PREFIX}${params.IMAGE_NAME}"
-                    // Generate Docker Compose stack file content with volumes and depends_on
-                    def dockerComposeStackContent = """
-                    version: '3.8'
-
-                    services:
-                      parse:
-                        image: ${imageName}
-                        environment:
-                          - APP_ID=${params.APP_ID}
-                          - MASTER_KEY=${params.MASTER_KEY}
-                          - DATABASE_URI=mongodb://mongodb:27017/dev
-                          - PARSE_MOUNT=/parse
-                          - MASTER_KEY_IPS="::/0"
-                          - CLOUD_CODE_MAIN=/parse/cloud/main.js
-                          - PARSE_SERVER_API_VERSION=7
-                        ports:
-                          - "1337:1337"
-                        volumes:
-                          - parse_data:/parse
-                        depends_on:
-                          - mongodb
-                        networks:
-                          - parse_server_network
-
-                      parse-dashboard:
-                        image: parseplatform/parse-dashboard
-                        environment:
-                          - PARSE_DASHBOARD_SERVER_URL=http://localhost:1337/parse
-                          - PARSE_DASHBOARD_APP_ID=${params.APP_ID}
-                          - PARSE_DASHBOARD_MASTER_KEY=${params.MASTER_KEY}
-                          - PARSE_DASHBOARD_APP_NAME=myAppName
-                          - PARSE_DASHBOARD_USER_ID=username
-                          - PARSE_DASHBOARD_USER_PASSWORD=password
-                          - PARSE_DASHBOARD_ALLOW_INSECURE_HTTP=true
-                        ports:
-                          - "4040:4040"
-                        networks:
-                          - parse_server_network
-                        depends_on:
-                          - parse
-
-                      mongodb:
-                        image: mongo:latest
-                        networks:
-                          - parse_server_network
-
-                    networks:
-                      parse_server_network:
-                    volumes:
-                      parse_data:
-                      mongo_data:
-                    """
-                    // Write Docker Compose stack file
-                    writeFile file: "${env.DOCKER_COMPOSE_FILE}", text: dockerComposeStackContent
-                }
-                echo "Docker Compose stack file created successfully"
-            }
-        }
+        
 
         
         stage('Deploy Docker Compose Stack') {
