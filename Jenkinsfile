@@ -15,22 +15,20 @@ pipeline {
     }
 
     stages {
-    stage('Clone User Repository') {
-        steps {
-            script {
-                echo "Cloning the user repository from ${params.GITHUB_REPO}"
-            }
-            git branch: 'main', url: "${params.GITHUB_REPO}"
-            script {
-                echo "Repository successfully cloned from main branch"
-                echo "Listing the contents of the workspace:"
-                sh 'ls -la'
-                sh 'cat ./cloud/main.js'
+        stage('Clone User Repository') {
+            steps {
+                script {
+                    echo "Cloning the user repository from ${params.GITHUB_REPO}"
+                }
+                git branch: 'main', url: "${params.GITHUB_REPO}"
+                script {
+                    echo "Repository successfully cloned from main branch"
+                    echo "Listing the contents of the workspace:"
+                    sh 'ls -la'
+                    sh 'cat ./cloud/main.js'
+                }
             }
         }
-    }
-
-
 
         stage('Create or Update Dockerfile') {
             steps {
@@ -145,7 +143,7 @@ pipeline {
                         depends_on:
                           - mongodb
                         networks:
-                          - parse_server_network
+                          - traefik-network
                         labels:
                             - traefik.http.routers.${imageName}.rule=Host(`${imageName}.example.com`)
                             - traefik.http.services.${imageName}.loadbalancer.server.port=1337
@@ -163,17 +161,18 @@ pipeline {
                         ports:
                           - "4040:4040"
                         networks:
-                          - parse_server_network
+                          - traefik-network
                         depends_on:
                           - parse
 
                       mongodb:
                         image: mongo:latest
                         networks:
-                          - parse_server_network
+                          - traefik-network
 
                     networks:
-                      parse_server_network:
+                      traefik-network:
+                        external: true
                     """
                     // Write Docker Compose stack file
                     writeFile file: "${env.DOCKER_COMPOSE_FILE}", text: dockerComposeStackContent
@@ -183,7 +182,6 @@ pipeline {
             }
         }
 
-        
         stage('Deploy Docker Compose Stack') {
             steps {
                 script {
@@ -196,8 +194,6 @@ pipeline {
                 echo "Docker Compose stack deployed successfully"
             }
         }
-
-    
 
         stage('Cleanup') {
             steps {
