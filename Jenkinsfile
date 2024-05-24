@@ -146,6 +146,9 @@ pipeline {
                           - mongodb
                         networks:
                           - parse_server_network
+                        labels:
+                          - traefik.http.routers.parse.rule=Host(`parse.example.com`)
+                          - traefik.http.services.parse.loadbalancer.server.port=1337
 
                       parse-dashboard:
                         image: parseplatform/parse-dashboard
@@ -163,6 +166,9 @@ pipeline {
                           - parse_server_network
                         depends_on:
                           - parse
+                        labels:
+                          - traefik.http.routers.parse-dashboard.rule=Host(`parse-dashboard.example.com`)
+                          - traefik.http.services.parse-dashboard.loadbalancer.server.port=4040
 
                       mongodb:
                         image: mongo:latest
