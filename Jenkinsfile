@@ -145,7 +145,7 @@ pipeline {
                         depends_on:
                           - mongodb
                         networks:
-                          - parse_server_network
+                          - agent_network
                         labels:
                           - traefik.http.routers.parse.rule=Host(`parse.example.com`)
                           - traefik.http.services.parse.loadbalancer.server.port=1337
@@ -163,7 +163,7 @@ pipeline {
                         ports:
                           - "4040:4040"
                         networks:
-                          - parse_server_network
+                          - agent_network
                         depends_on:
                           - parse
                         labels:
@@ -173,10 +173,11 @@ pipeline {
                       mongodb:
                         image: mongo:latest
                         networks:
-                          - parse_server_network
+                          - agent_network
 
                     networks:
-                      parse_server_network:
+                        agent_network:
+                            external: true
                     """
                     // Write Docker Compose stack file
                     writeFile file: "${env.DOCKER_COMPOSE_FILE}", text: dockerComposeStackContent
