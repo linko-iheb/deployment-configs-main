@@ -145,8 +145,8 @@ pipeline {
                         networks:
                           - traefik-network
                         labels:
-                            - traefik.http.routers.${imageName}.rule=Host(`${imageName}.example.com`)
-                            - traefik.http.services.${imageName}.loadbalancer.server.port=1337
+                            - traefik.http.routers.parse.rule=Host(`${imageName}.example.com`)
+                            - traefik.http.services.parse.loadbalancer.server.port=1337
 
                       parse-dashboard:
                         image: parseplatform/parse-dashboard
