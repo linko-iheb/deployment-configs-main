@@ -64,6 +64,7 @@ pipeline {
 
                         // Insert the new ENV variables after the existing ones
                         dockerfileContent = dockerfileContent.replaceFirst(/(ENV DATABASE_URI .*)/, "\$1\n${envBlock.trim()}")
+                        dockerfileContent = dockerfileContent.replaceAll(/ ENV PARSE_MOUNT .*/, "ENV PARSE_MOUNT /parse")
 
                         // Remove the '#' character from the commented lines
                         dockerfileContent = dockerfileContent.replaceAll(/# ENV CLOUD_CODE_MAIN .*/, "ENV CLOUD_CODE_MAIN /parse/cloud/main.js")
@@ -146,8 +147,6 @@ services:
     deploy:
       labels:
         - traefik.enable=true
-        - traefik.http.routers.parse.rule=Host(`parse.localhost`)
-        - traefik.http.routers.parse.entrypoints=web
         - traefik.http.services.parse.loadbalancer.server.port=1337
         - traefik.http.routers.parse.service=parse
   parse-dashboard:
