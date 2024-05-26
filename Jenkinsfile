@@ -15,20 +15,22 @@ pipeline {
     }
 
     stages {
-        stage('Clone User Repository') {
-            steps {
-                script {
-                    echo "Cloning the user repository from ${params.GITHUB_REPO}"
-                }
-                git branch: 'main', url: "${params.GITHUB_REPO}"
-                script {
-                    echo "Repository successfully cloned from main branch"
-                    echo "Listing the contents of the workspace:"
-                    sh 'ls -la'
-                    sh 'cat ./cloud/main.js'
-                }
+    stage('Clone User Repository') {
+        steps {
+            script {
+                echo "Cloning the user repository from ${params.GITHUB_REPO}"
+            }
+            git branch: 'main', url: "${params.GITHUB_REPO}"
+            script {
+                echo "Repository successfully cloned from main branch"
+                echo "Listing the contents of the workspace:"
+                sh 'ls -la'
+                sh 'cat ./cloud/main.js'
             }
         }
+    }
+
+
 
         stage('Create or Update Dockerfile') {
             steps {
@@ -53,18 +55,17 @@ pipeline {
                         if (!dockerfileContent.contains("ENV CLOUD_CODE_MAIN")) {
                             envBlock += "ENV CLOUD_CODE_MAIN /parse/cloud/main.js\n"
                         } else {
-                            dockerfileContent = dockerfileContent.replaceAll(/ENV CLOUD_CODE_MAIN .*/, "ENV CLOUD_CODE_MAIN /parse/cloud/main.js")
+                            dockerfileContent = dockerfileContent.replaceAll(/# ENV CLOUD_CODE_MAIN .*/, "ENV CLOUD_CODE_MAIN /parse/cloud/main.js")
                         }
 
                         if (!dockerfileContent.contains("ENV PARSE_SERVER_API_VERSION")) {
                             envBlock += "ENV PARSE_SERVER_API_VERSION 7\n"
                         } else {
-                            dockerfileContent = dockerfileContent.replaceAll(/ENV PARSE_SERVER_API_VERSION .*/, "ENV PARSE_SERVER_API_VERSION 7")
+                            dockerfileContent = dockerfileContent.replaceAll(/# ENV PARSE_SERVER_API_VERSION .*/, "ENV PARSE_SERVER_API_VERSION 7")
                         }
 
                         // Insert the new ENV variables after the existing ones
                         dockerfileContent = dockerfileContent.replaceFirst(/(ENV DATABASE_URI .*)/, "\$1\n${envBlock.trim()}")
-                        dockerfileContent = dockerfileContent.replaceAll(/ ENV PARSE_MOUNT .*/, "ENV PARSE_MOUNT /parse")
 
                         // Remove the '#' character from the commented lines
                         dockerfileContent = dockerfileContent.replaceAll(/# ENV CLOUD_CODE_MAIN .*/, "ENV CLOUD_CODE_MAIN /parse/cloud/main.js")
@@ -127,53 +128,49 @@ pipeline {
                     def imageName = "${env.DOCKER_HUB_PREFIX}${params.IMAGE_NAME}"
                     // Generate Docker Compose stack file content with volumes and depends_on
                     def dockerComposeStackContent = """
-version: '3.8'
-services:
-  parse:
-    image: ${imageName}
-    environment:
-      - APP_ID=${params.APP_ID}
-      - MASTER_KEY=${params.MASTER_KEY}
-      - DATABASE_URI=mongodb://mongodb:27017
-      - PARSE_MOUNT=/parse
-      - CLOUD_CODE_MAIN=/parse/cloud/main.js
-      - PARSE_SERVER_API_VERSION=7
-    ports:
-      - "1337:1337"
-    depends_on:
-      - mongodb
-    networks:
-      - traefik-network
-    deploy:
-      labels:
-        - traefik.enable=true
-        - traefik.http.services.parse.loadbalancer.server.port=1337
-  parse-dashboard:
-    image: parseplatform/parse-dashboard
-    environment:
-      - PARSE_DASHBOARD_SERVER_URL=http://parse:1337/parse
-      - PARSE_DASHBOARD_APP_ID=${params.APP_ID}
-      - PARSE_DASHBOARD_MASTER_KEY=${params.MASTER_KEY}
-      - PARSE_DASHBOARD_APP_NAME=myAppName
-      - PARSE_DASHBOARD_USER_ID=username
-      - PARSE_DASHBOARD_USER_PASSWORD=password
-      - PARSE_DASHBOARD_ALLOW_INSECURE_HTTP=true
-    ports:
-      - "4040:4040"
-    networks:
-      - traefik-network
-    depends_on:
-      - parse
-    deploy:
-      labels:
-        - traefik.enable=true
-  mongodb:
-    image: mongo:latest
-    networks:
-      - traefik-network
-networks:
-  traefik-network:
-    external: true
+                    version: '3.8'
+
+                    services:
+                      parse:
+                        image: ${imageName}
+                        environment:
+                          - APP_ID=${params.APP_ID}
+                          - MASTER_KEY=${params.MASTER_KEY}
+                          - DATABASE_URI=mongodb://mongodb:27017
+                          - PARSE_MOUNT=/parse
+                          - CLOUD_CODE_MAIN=/parse/cloud/main.js
+                          - PARSE_SERVER_API_VERSION=7
+                        ports:
+                          - "1337:1337"
+                        depends_on:
+                          - mongodb
+                        networks:
+                          - parse_server_network
+
+                      parse-dashboard:
+                        image: parseplatform/parse-dashboard
+                        environment:
+                          - PARSE_DASHBOARD_SERVER_URL=http://localhost:1337/parse
+                          - PARSE_DASHBOARD_APP_ID=${params.APP_ID}
+                          - PARSE_DASHBOARD_MASTER_KEY=${params.MASTER_KEY}
+                          - PARSE_DASHBOARD_APP_NAME=myAppName
+                          - PARSE_DASHBOARD_USER_ID=username
+                          - PARSE_DASHBOARD_USER_PASSWORD=password
+                          - PARSE_DASHBOARD_ALLOW_INSECURE_HTTP=true
+                        ports:
+                          - "4040:4040"
+                        networks:
+                          - parse_server_network
+                        depends_on:
+                          - parse
+
+                      mongodb:
+                        image: mongo:latest
+                        networks:
+                          - parse_server_network
+
+                    networks:
+                      parse_server_network:
                     """
                     // Write Docker Compose stack file
                     writeFile file: "${env.DOCKER_COMPOSE_FILE}", text: dockerComposeStackContent
@@ -183,6 +180,7 @@ networks:
             }
         }
 
+        
         stage('Deploy Docker Compose Stack') {
             steps {
                 script {
@@ -196,11 +194,15 @@ networks:
             }
         }
 
+    
+
         stage('Cleanup') {
             steps {
                 script {
                     // Delete Dockerfile and Docker Compose file
+                    def imageName = "${env.DOCKER_HUB_PREFIX}${params.IMAGE_NAME}"
                     sh "rm Dockerfile ${env.DOCKER_COMPOSE_FILE}"
+                    sh "rm -rf ${env.GITHUB_REPO}"
                 }
                 echo "Dockerfile and Docker Compose file deleted successfully"
             }
