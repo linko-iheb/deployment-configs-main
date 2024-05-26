@@ -145,7 +145,14 @@ pipeline {
                         depends_on:
                           - mongodb
                         networks:
-                          - parse_server_network
+                          - traefik-network
+                        deploy:
+                            labels:
+                                - traefik.enable=true
+                                - traefik.http.routers.parse.rule=Host(`parse.localhost`)
+                                - traefik.http.routers.parse.entrypoints=web
+                                - traefik.http.services.parse.loadbalancer.server.port=1337
+                                - traefik.http.routers.parse.service=parse
 
                       parse-dashboard:
                         image: parseplatform/parse-dashboard
@@ -160,17 +167,21 @@ pipeline {
                         ports:
                           - "4040:4040"
                         networks:
-                          - parse_server_network
+                          - traefik-network
                         depends_on:
                           - parse
+                        deploy:
+                            labels:
+                                - traefik.enable=true
 
                       mongodb:
                         image: mongo:latest
                         networks:
-                          - parse_server_network
+                          - traefik-network
 
                     networks:
-                      parse_server_network:
+                        traefik-network:
+                            external: true
                     """
                     // Write Docker Compose stack file
                     writeFile file: "${env.DOCKER_COMPOSE_FILE}", text: dockerComposeStackContent
