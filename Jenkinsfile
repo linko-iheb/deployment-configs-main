@@ -148,7 +148,6 @@ services:
       labels:
         - traefik.enable=true
         - traefik.http.services.parse.loadbalancer.server.port=1337
-        - traefik.http.routers.parse.service=parse
   parse-dashboard:
     image: parseplatform/parse-dashboard
     environment:
