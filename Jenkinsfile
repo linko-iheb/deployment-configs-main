@@ -169,10 +169,6 @@ services:
     deploy:
       labels:
         - traefik.enable=true
-        - traefik.http.routers.parse-dashboard.rule=Host(`parse-dashboard.example.com`)
-        - traefik.http.services.parse-dashboard.loadbalancer.server.port=4040
-        - traefik.http.routers.parse-dashboard.entrypoints=web
-        - traefik.http.routers.parse-dashboard.service=parse-dashboard
   mongodb:
     image: mongo:latest
     networks:
